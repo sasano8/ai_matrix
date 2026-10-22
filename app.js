@@ -357,7 +357,7 @@ function render() {
   const widenError = element('p', 'column-error'); widenError.setAttribute('role', 'alert'); widenError.hidden = true;
   widenForm.append(widenLabel, widenInput, widenButton, widenError);
   widenForm.addEventListener('submit', (event) => { event.preventDefault(); widen(widenInput, widenButton, widenError); });
-  $('#matrix').append(heading, columns, widenForm);
+  $('#matrix').append(heading, widenForm, columns);
   if (selected && state.perspectives[selected[0]]?.points[selected[1]]) selectPoint(...selected);
   else { selected = null; $('#detail').innerHTML = emptyDetail; }
   if (!state.perspectives.length) columns.append(element('p', 'no-points', '観点はまだ見つかりませんでした。別の切り口で視野を広げることもできます。'));
