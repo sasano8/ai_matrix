@@ -12,19 +12,26 @@
   <header class="topbar"><a class="brand" href="./"><span class="brand-icon" aria-hidden="true">✳</span> AI Matrix</a><span class="tagline">思考を、ひらく。</span><span class="local-badge"><span></span> Chrome built-in AI</span></header>
   <main class="workspace">
     <section class="matrix-pane" aria-label="投稿とマトリクス">
-      <div class="intro"><span class="eyebrow">YOUR THOUGHTS, IN PERSPECTIVE</span><h1>ひとつの話題から、<br>いくつもの気づきへ。</h1><p>気になることを投函。問いを手がかりに、自分の考えを見つけていきます。</p></div>
+      <div class="intro"><span class="eyebrow">YOUR THOUGHTS, IN PERSPECTIVE</span><h1>ひとつの話題から、<br>いくつもの気づきへ。</h1><p>気になることを投函。選んだプロンプトから、思考を広げます。</p></div>
       <form id="post-form" class="composer">
         <label for="post">いま、考えていること</label>
         <textarea id="post" maxlength="12000" rows="4" placeholder="アイデア、悩み、まだまとまっていない考えでも。" required></textarea>
-        <div class="direction-fields">
-          <label for="direction">どう広げたい？</label>
-          <select id="direction"><option value="reflect">問いで自分を見つめる</option><option value="organize">状況を整理する</option><option value="explore">可能性を広げる</option></select>
-          <label for="guidance">方向性をひとこと <span>（任意）</span></label>
-          <input id="guidance" type="text" maxlength="500" placeholder="例：結論を急がず、大切にしたいことを考えたい">
+        <div class="composer-footer">
+          <span id="post-count">0 / 12,000</span>
+          <div class="composer-actions">
+            <label class="sr-only" for="direction">生成プロンプト</label>
+            <select id="direction" aria-label="生成プロンプト"><option value="reflect">問いかける</option><option value="organize">整理する</option><option value="explore">可能性を広げる</option><option value="advise">提案する</option><option value="plan">計画する</option><option value="custom">自由に指定</option></select>
+            <details id="prompt-settings" class="prompt-settings"><summary>プロンプト・設定</summary><div class="prompt-panel">
+              <label for="guidance">生成プロンプト（編集できます）</label>
+              <textarea id="guidance" maxlength="3000" rows="5"></textarea>
+              <div class="level-settings"><label for="perspective-level">観点レベル <input id="perspective-level" type="number" min="1" max="12" value="3"></label><label for="depth-level">深掘りレベル <input id="depth-level" type="number" min="1" max="12" value="3"></label></div>
+              <p>件数の目安です。多い結果は残し、足りなければ補完を試みます。無理に埋めることはしません。</p>
+            </div></details>
+            <button id="analyze" class="primary" type="submit">思考をひらく <span aria-hidden="true">↗</span></button>
+          </div>
         </div>
-        <div class="composer-footer"><span id="post-count">0 / 12,000</span><button id="analyze" class="primary" type="submit">思考をひらく <span aria-hidden="true">↗</span></button></div>
       </form>
-      <div class="utility"><span id="ai-status" role="status">AI の利用状況を確認中…</span><button id="demo" type="button" class="text-button">サンプルを見る ↗</button></div>
+      <div class="utility"><span id="ai-status" role="status">AI の利用状況を確認中…</span><button id="cancel-generation" type="button" class="text-button" hidden>生成を中止</button><button id="demo" type="button" class="text-button">サンプルを見る ↗</button></div>
       <details id="support" class="support"><summary>Chrome built-in AI について</summary><p>対応するデスクトップ版 Chrome の Prompt API（LanguageModel）を使用します。HTTPS または localhost と、日本語対応モデルが必要です。初回はモデルのダウンロードが発生します。利用できない場合は Chrome の対応状況・設定と端末の空き容量を確認してください。</p><p>解析する文章はこのアプリから外部サーバーへ送信しません。サンプルは操作確認用の固定データです。AI の出力には誤りが含まれることがあります。</p><a href="https://developer.chrome.com/docs/ai/prompt-api" target="_blank" rel="noopener noreferrer">Chrome の公式ガイド ↗</a></details>
       <p id="error" class="error" role="alert" hidden></p>
       <section id="matrix" aria-label="観点ごとの深掘り"></section>
