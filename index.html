@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>AI Matrix — 思考を、ひらく。</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="./"><span class="brand-icon" aria-hidden="true">✳</span> AI Matrix</a><span class="tagline">思考を、ひらく。</span><span class="local-badge"><span></span> Chrome built-in AI</span></header>
+  <main class="workspace">
+    <section class="matrix-pane" aria-label="投稿とマトリクス">
+      <div class="intro"><span class="eyebrow">YOUR THOUGHTS, IN PERSPECTIVE</span><h1>ひとつの話題から、<br>いくつもの気づきへ。</h1><p>気になることを投函。AI が観点を見つけ、思考の先を一緒に探ります。</p></div>
+      <form id="post-form" class="composer">
+        <label for="post">いま、考えていること</label>
+        <textarea id="post" maxlength="12000" rows="4" placeholder="アイデア、悩み、まだまとまっていない考えでも。" required></textarea>
+        <div class="composer-footer"><span id="post-count">0 / 12,000</span><button id="analyze" class="primary" type="submit">観点をひらく <span aria-hidden="true">↗</span></button></div>
+      </form>
+      <div class="utility"><span id="ai-status" role="status">AI の利用状況を確認中…</span><button id="demo" type="button" class="text-button">サンプルを見る ↗</button></div>
+      <details id="support" class="support"><summary>Chrome built-in AI について</summary><p>対応するデスクトップ版 Chrome の Prompt API（LanguageModel）を使用します。HTTPS または localhost と、日本語対応モデルが必要です。初回はモデルのダウンロードが発生します。利用できない場合は Chrome の対応状況・設定と端末の空き容量を確認してください。</p><p>解析する文章はこのアプリから外部サーバーへ送信しません。サンプルは操作確認用の固定データです。AI の出力には誤りが含まれることがあります。</p><a href="https://developer.chrome.com/docs/ai/prompt-api" target="_blank" rel="noopener noreferrer">Chrome の公式ガイド ↗</a></details>
+      <p id="error" class="error" role="alert" hidden></p>
+      <section id="matrix" aria-label="観点ごとの深掘り"></section>
+      <div id="empty" class="empty"><div class="empty-symbol" aria-hidden="true">▥</div><h2>思考の地図は、ここから。</h2><p>テキストを投函すると、観点ごとのカードが並びます。<br>気になるカードを選び、さらに深く探索しましょう。</p><div class="steps"><span>01 投函する</span><i>→</i><span>02 観点を見つける</span><i>→</i><span>03 深掘りする</span></div></div>
+      <footer class="pane-footer">あなたの思考を、あなたのブラウザで。<span>AI MATRIX / 01</span></footer>
+    </section>
+    <aside class="detail-pane" aria-labelledby="detail-label"><div class="detail-top"><span id="detail-label" class="eyebrow">FOCUS / 選択した深掘り</span><span aria-hidden="true">↗</span></div><div id="detail" aria-live="polite"><div class="detail-empty"><span class="focus-symbol" aria-hidden="true">⌖</span><h2>ひとつの気づきに、<br>フォーカスする。</h2><p>左の深掘りカードを選ぶと、<br>話題・観点・内容をここに表示します。</p></div></div><div class="detail-bottom">広く眺めて、深く考える。</div></aside>
+  </main>
+</body>
+</html>
