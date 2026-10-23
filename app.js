@@ -78,7 +78,53 @@ function leaveEditor() {
   if (selected) selectPoint(...selected);
   return true;
 }
-const storageKey = 'ai-matrix-v1';
+const storageKey = 'ai-matrix-v1'; // Keep the old single-matrix data as a migration fallback.
+const timelineKey = 'ai-matrix-timeline-v1';
+let timeline = { version: 1, active: 0, baseMonth: new Date().getMonth(), slots: [null, null, null, null] };
+function captureTime() {
+  timeline.slots[timeline.active] = {
+    matrix: state, selected,
+    form: { post: $('#post').value, direction: $('#direction').value, prompt: $('#guidance').value, levels: levels() },
+  };
+}
+function restoreTime(slot) {
+  state = slot.matrix;
+  selected = slot.selected;
+  $('#post').value = slot.form.post;
+  $('#post-count').textContent = `${slot.form.post.length.toLocaleString()} / 12,000`;
+  $('#direction').value = slot.form.direction;
+  $('#guidance').value = slot.form.prompt;
+  $('#perspective-level').value = slot.form.levels.perspectives;
+  $('#depth-level').value = slot.form.levels.depth;
+}
+function timeLabel() {
+  const months = timeline.active * 3;
+  const month = (timeline.baseMonth + months) % 12 + 1;
+  return `${month}月 · ${months === 0 ? '基準の時点' : `基準から${months}か月`} (${timeline.active + 1}/4)`;
+}
+function renderTime() {
+  $('#time-label').textContent = timeLabel();
+  document.querySelectorAll('.time-actions button').forEach((button) => { button.disabled = busy; });
+}
+function moveTime(delta) {
+  if (busy || !leaveEditor()) return;
+  captureTime();
+  const next = (timeline.active + delta + 4) % 4;
+  // The first visit starts with an independent copy; returning never overwrites it.
+  if (!timeline.slots[next]) timeline.slots[next] = structuredClone(timeline.slots[timeline.active]);
+  timeline.active = next;
+  restoreTime(timeline.slots[next]);
+  $('#prompt-settings').open = false;
+  showError(''); render(); renderTime(); save();
+  $('#ai-status').textContent = `${timeLabel()}を表示中 · 初回は移動元の内容をコピーし、時点ごとに保存します。`;
+}
+function validTimeSlot(slot) {
+  return slot === null || (slot && (slot.matrix === null || (validAnalysis(slot.matrix) && nonempty(slot.matrix.source, 12000) && typeof slot.matrix.demo === 'boolean')) &&
+    slot.form && typeof slot.form.post === 'string' && slot.form.post.length <= 12000 && Object.hasOwn(directions, slot.form.direction) &&
+    typeof slot.form.prompt === 'string' && slot.form.prompt.length <= 3000 &&
+    slot.form.levels && ['perspectives', 'depth'].every((key) => Number.isInteger(slot.form.levels[key]) && slot.form.levels[key] >= 1 && slot.form.levels[key] <= 12) &&
+    (slot.selected === null || (Array.isArray(slot.selected) && slot.selected.length === 2 && slot.selected.every((index) => Number.isInteger(index) && index >= 0))));
+}
 function element(tag, className, text) {
   const el = document.createElement(tag);
   if (className) el.className = className;
@@ -98,8 +144,8 @@ function validAnalysis(data) {
     data.perspectives.every((p) => p && nonempty(p.title, 180) && validPoints(p.points));
 }
 function save() {
-  try { localStorage.setItem(storageKey, JSON.stringify(state)); }
-  catch { $('#ai-status').textContent = '端末に保存できません。このタブ内では引き続き使えます。'; }
+  try { captureTime(); localStorage.setItem(timelineKey, JSON.stringify(timeline)); $('#storage-warning').hidden = true; }
+  catch { $('#storage-warning').textContent = '端末に保存できません。変更はこのタブ内だけに保持されています。リロードすると失われる場合があります。'; $('#storage-warning').hidden = false; }
 }
 function showError(message) {
   $('#error').textContent = message;
@@ -126,6 +172,7 @@ function setBusy(value) {
   $('#perspective-level').disabled = value;
   $('#depth-level').disabled = value;
   document.querySelectorAll('.deepen-form button, .deepen-form textarea, .edit-page, .page-editor input, .page-editor textarea, .page-editor button, .widen-form input, .widen-form button').forEach((el) => { el.disabled = value; });
+  renderTime();
   $('#matrix').setAttribute('aria-busy', String(value));
   $('#ai-status').classList.toggle('busy', value);
 }
@@ -179,7 +226,7 @@ async function generate(prompt, schema) {
     session = await Promise.race([creating, abortPromise]);
     $('#ai-status').textContent = 'AI が考えています…（中止できます）';
     const format = `\n出力は次の JSON Schema に従う JSON だけにしてください。説明や Markdown は付けないでください。\n${JSON.stringify(schema)}`;
-    const output = await Promise.race([session.prompt(prompt + format, { signal: controller.signal }), abortPromise]);
+    const output = await Promise.race([session.prompt(prompt + `\n時間軸の視点: ${timeLabel()}。1年周期の仮想的な時間レイヤーです。その時期の状況を考慮してください。過去の実績や未来の事実が確認されたとは扱わず、不明な内容は仮説として区別してください。` + format, { signal: controller.signal }), abortPromise]);
     try { return parseResponse(output); }
     catch {
       $('#ai-status').textContent = '生成結果の形式を整えています…';
@@ -271,7 +318,7 @@ function openEditor(columnIndex, pointIndex) {
 function render() {
   $('#empty').hidden = Boolean(state);
   $('#matrix').replaceChildren();
-  if (!state) return;
+  if (!state) { selected = null; $('#detail').innerHTML = emptyDetail; return; }
   const heading = element('div', 'topic');
   const topline = element('div', 'topic-top');
   topline.append(element('span', 'eyebrow', 'THOUGHT MATRIX / 思考のマトリクス'));
@@ -483,15 +530,40 @@ $('#demo').addEventListener('click', () => {
   selected = [0, 0]; showError(''); save(); render();
   $('#ai-status').textContent = 'サンプルを表示中 · AI は使用していません';
 });
-try {
-  const saved = JSON.parse(localStorage.getItem(storageKey));
-  if (validAnalysis(saved) && nonempty(saved.source, 12000) && typeof saved.demo === 'boolean') {
-    state = saved; selected = [0, 0];
-    $('#direction').value = saved.direction in directions ? saved.direction : 'reflect';
-    $('#guidance').value = typeof saved.prompt === 'string' ? saved.prompt : `${directions[$('#direction').value].instruction}\n${saved.guidance || ''}`;
-    $('#perspective-level').value = saved.levels?.perspectives || 3;
-    $('#depth-level').value = saved.levels?.depth || 3;
-    render();
-  }
-} catch { /* Storage may be unavailable or contain an older format. */ }
+function restoreSavedTimeline() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(timelineKey));
+    if (saved?.version === 1 && Number.isInteger(saved.active) && saved.active >= 0 && saved.active < 4 &&
+      Number.isInteger(saved.baseMonth) && saved.baseMonth >= 0 && saved.baseMonth < 12 &&
+      Array.isArray(saved.slots) && saved.slots.length === 4 && saved.slots.every(validTimeSlot) && saved.slots[saved.active]) {
+      timeline = saved; restoreTime(saved.slots[saved.active]); render(); return;
+    }
+  } catch { /* Try the retained single-matrix data below. */ }
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey));
+    if (validAnalysis(saved) && nonempty(saved.source, 12000) && typeof saved.demo === 'boolean') {
+      state = saved; selected = [0, 0];
+      $('#post').value = saved.source;
+      $('#post-count').textContent = `${saved.source.length.toLocaleString()} / 12,000`;
+      $('#direction').value = Object.hasOwn(directions, saved.direction) ? saved.direction : 'reflect';
+      $('#guidance').value = typeof saved.prompt === 'string' ? saved.prompt : `${directions[$('#direction').value].instruction}\n${saved.guidance || ''}`;
+      $('#perspective-level').value = saved.levels?.perspectives || 3;
+      $('#depth-level').value = saved.levels?.depth || 3;
+      render();
+    }
+  } catch { /* Storage may be unavailable or contain an older format. */ }
+}
+$('#time-travel').addEventListener('click', () => moveTime(-1));
+$('#time-travel').addEventListener('contextmenu', (event) => { event.preventDefault(); moveTime(1); });
+$('#time-travel').addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); moveTime(event.key === 'ArrowRight' ? 1 : -1); }
+});
+$('#time-back').addEventListener('click', () => moveTime(-1));
+$('#time-forward').addEventListener('click', () => moveTime(1));
+for (const selector of ['#post', '#guidance']) $(selector).addEventListener('input', save);
+for (const selector of ['#direction', '#perspective-level', '#depth-level']) {
+  $(selector).addEventListener('change', save);
+}
+restoreSavedTimeline();
+renderTime();
 checkAI();

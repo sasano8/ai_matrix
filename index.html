@@ -34,6 +34,12 @@
       <div class="utility"><span id="ai-status" role="status">AI の利用状況を確認中…</span><button id="cancel-generation" type="button" class="text-button" hidden>生成を中止</button><button id="demo" type="button" class="text-button">サンプルを見る ↗</button></div>
       <details id="support" class="support"><summary>Chrome built-in AI について</summary><p>対応するデスクトップ版 Chrome の Prompt API（LanguageModel）を使用します。HTTPS または localhost と、日本語対応モデルが必要です。初回はモデルのダウンロードが発生します。利用できない場合は Chrome の対応状況・設定と端末の空き容量を確認してください。</p><p>解析する文章はこのアプリから外部サーバーへ送信しません。サンプルは操作確認用の固定データです。AI の出力には誤りが含まれることがあります。</p><a href="https://developer.chrome.com/docs/ai/prompt-api" target="_blank" rel="noopener noreferrer">Chrome の公式ガイド ↗</a></details>
       <p id="error" class="error" role="alert" hidden></p>
+      <p id="storage-warning" class="error" role="alert" hidden></p>
+      <section class="time-axis" aria-label="Z軸・時間">
+        <div><span class="eyebrow">Z / TIME</span><strong id="time-label" aria-live="polite">基準の時点</strong><span class="time-cycle">3か月刻み · 1年周期</span></div>
+        <div class="time-actions"><button id="time-back" type="button" aria-label="3か月前へ">←</button><button id="time-travel" type="button" aria-describedby="time-help">◷ 時間を移動</button><button id="time-forward" type="button" aria-label="3か月先へ">→</button></div>
+        <p id="time-help">左クリックで過去へ、右クリックで未来へ。4回で元の時点に戻ります。矢印ボタンやキーボードの左右キーでも移動できます。</p>
+      </section>
       <section id="matrix" aria-label="観点ごとの深掘り"></section>
       <div id="empty" class="empty"><div class="empty-symbol" aria-hidden="true">▥</div><h2>思考の地図は、ここから。</h2><p>テキストを投函すると、観点ごとのカードが並びます。<br>気になるカードを選び、さらに深く探索しましょう。</p><div class="steps"><span>01 投函する</span><i>→</i><span>02 観点を見つける</span><i>→</i><span>03 深掘りする</span></div></div>
       <footer class="pane-footer">あなたの思考を、あなたのブラウザで。<span>AI MATRIX / 01</span></footer>

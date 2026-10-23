@@ -66,6 +66,46 @@ const analysis = (count = 3, depth = 3) => ({ topic: 'テスト話題', perspect
     assert.equal(await page.locator('.card').count(), 8);
     await page.locator('.column').nth(2).locator('.card').nth(1).click();
     assert.match(await page.locator('.personal-notes').innerText(), /余白/);
+    // Time is a four-phase cycle, not an ever-growing history.
+    const baselineTitles = await page.locator('.card h4').allTextContents();
+    await page.locator('#post').fill('基準時点の下書き');
+    const baseLabel = await page.locator('#time-label').innerText();
+    await page.locator('#time-travel').click({ button: 'right' });
+    assert.match(await page.locator('#time-label').innerText(), /3か月/);
+    assert.deepEqual(await page.locator('.card h4').allTextContents(), baselineTitles);
+    await page.getByRole('button', { name: 'ページを編集' }).click();
+    await page.locator('#edit-title').fill('3か月先だけの見出し');
+    await page.getByRole('button', { name: '変更を保存' }).click();
+    await page.locator('#post').fill('3か月先の下書き');
+    await page.locator('#time-travel').click();
+    assert.equal(await page.locator('#time-label').innerText(), baseLabel);
+    assert.deepEqual(await page.locator('.card h4').allTextContents(), baselineTitles);
+    assert.equal(await page.locator('#post').inputValue(), '基準時点の下書き');
+    await page.locator('#time-forward').click();
+    assert.match(await page.locator('#detail h2').innerText(), /3か月先だけ/);
+    assert.equal(await page.locator('#post').inputValue(), '3か月先の下書き');
+    await page.reload();
+    assert.match(await page.locator('#time-label').innerText(), /3か月/);
+    assert.match(await page.locator('#detail h2').innerText(), /3か月先だけ/);
+    await page.locator('#time-back').click();
+    for (let i = 0; i < 4; i++) await page.locator('#time-travel').click({ button: 'right' });
+    assert.equal(await page.locator('#time-label').innerText(), baseLabel);
+    assert.deepEqual(await page.locator('.card h4').allTextContents(), baselineTitles);
+    for (let i = 0; i < 4; i++) await page.locator('#time-travel').click();
+    assert.equal(await page.locator('#time-label').innerText(), baseLabel);
+    await page.locator('#time-travel').focus();
+    await page.keyboard.press('ArrowRight');
+    assert.match(await page.locator('#time-label').innerText(), /3か月/);
+    await page.keyboard.press('ArrowLeft');
+    assert.equal(await page.locator('#time-label').innerText(), baseLabel);
+    await page.getByRole('button', { name: 'ページを編集' }).click();
+    await page.locator('#edit-title').fill('時間移動前の未保存変更');
+    page.once('dialog', (dialog) => dialog.dismiss());
+    await page.locator('#time-forward').click();
+    assert.equal(await page.locator('#time-label').innerText(), baseLabel);
+    assert.equal(await page.locator('#edit-title').inputValue(), '時間移動前の未保存変更');
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: 'キャンセル', exact: true }).click();
     await page.evaluate(() => { window.scrollTo(0, 0); });
     await page.screenshot({ path: '/tmp/ai-matrix-desktop.png', fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -173,6 +213,7 @@ const analysis = (count = 3, depth = 3) => ({ topic: 'テスト話題', perspect
     await ai.evaluate(() => { window.queue.push({ type: 'hang' }); });
     await ai.locator('#analyze').click();
     await ai.waitForFunction(() => window.calls.at(-1)?.kind === 'prompt');
+    assert.equal(await ai.locator('#time-travel').isDisabled(), true);
     await ai.locator('#cancel-generation').click(); await idle();
     assert.match(await ai.locator('#error').innerText(), /中止/);
     assert.equal(await ai.locator('.card').count(), 9);
@@ -187,6 +228,25 @@ const analysis = (count = 3, depth = 3) => ({ topic: 'テスト話題', perspect
     await ai.getByRole('button', { name: '視野を広げる' }).click(); await idle();
     assert.equal(await ai.locator('.card').count(), 9);
     assert.deepEqual(errors, []);
+    // Existing single-matrix data remains readable and is not removed by migration.
+    const legacy = await browser.newPage();
+    await legacy.addInitScript((matrix) => {
+      if (!sessionStorage.getItem('legacy-seeded')) {
+        localStorage.clear();
+        localStorage.setItem('ai-matrix-v1', JSON.stringify({ ...matrix, source: '旧バージョンの投稿', demo: false, direction: 'reflect' }));
+        sessionStorage.setItem('legacy-seeded', 'true');
+      }
+      Object.defineProperty(window, 'LanguageModel', { configurable: true, value: undefined });
+    }, analysis());
+    await legacy.goto('http://127.0.0.1:8000');
+    assert.equal(await legacy.locator('.card').count(), 9);
+    await legacy.locator('#time-forward').click();
+    await legacy.reload();
+    assert.equal(await legacy.locator('.card').count(), 9);
+    assert.match(await legacy.locator('#time-label').innerText(), /3か月/);
+    assert.equal(await legacy.evaluate(() => Boolean(localStorage.getItem('ai-matrix-v1'))), true);
+    assert.deepEqual(errors, []);
+    console.log('PASS: time cycle, both directions, independent edits and drafts, reload, keyboard, unsaved changes, busy state, legacy migration');
     console.log('PASS: plain Prompt API without grammar constraints, JSON repair, completion to 3×3, excess and empty results, prompt selection, edited context, horizontal expansion, cancellation, XSS safety');
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exitCode = 1; });
